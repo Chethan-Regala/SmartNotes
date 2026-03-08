@@ -5,3 +5,4 @@ export * from "./NoteChunker"
 
 export * from "./adapters/VaultAdapter"
 export * from "./adapters/EmbeddingAdapter"
+export * from "./adapters/IndexStore"

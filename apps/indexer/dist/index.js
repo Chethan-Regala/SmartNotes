@@ -20,3 +20,4 @@ __exportStar(require("./IndexQueue"), exports);
 __exportStar(require("./NoteChunker"), exports);
 __exportStar(require("./adapters/VaultAdapter"), exports);
 __exportStar(require("./adapters/EmbeddingAdapter"), exports);
+__exportStar(require("./adapters/IndexStore"), exports);

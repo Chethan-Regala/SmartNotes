@@ -1,5 +1,6 @@
 import { VaultAdapter } from "./adapters/VaultAdapter"
 import { EmbeddingAdapter } from "./adapters/EmbeddingAdapter"
+import { IndexStore } from "./adapters/IndexStore"
 import { NoteChunker } from "./NoteChunker"
 import { IndexQueue } from "./IndexQueue"
 import { IndexResult, IndexJob } from "./types"
@@ -10,12 +11,18 @@ import { IndexResult, IndexJob } from "./types"
 export class IndexingEngine {
   private vault: VaultAdapter
   private embedder: EmbeddingAdapter
+  private store: IndexStore
   private chunker: NoteChunker
   private queue: IndexQueue
 
-  constructor(vault: VaultAdapter, embedder: EmbeddingAdapter) {
+  constructor(
+    vault: VaultAdapter,
+    embedder: EmbeddingAdapter,
+    store: IndexStore
+  ) {
     this.vault = vault
     this.embedder = embedder
+    this.store = store
     this.chunker = new NoteChunker()
     this.queue = new IndexQueue()
   }
@@ -73,22 +80,21 @@ export class IndexingEngine {
 
     const embeddings = await this.embedder.embed(chunkTexts)
 
-    return {
+    const result: IndexResult = {
       notePath,
       chunks,
       embeddings,
     }
+
+    await this.store.saveChunks(notePath, chunks, embeddings)
+
+    return result
   }
 
   /**
    * Remove a note from the index.
-   * (Implementation placeholder for future index storage layer)
    */
   private async removeNote(notePath: string) {
-    // Future implementation:
-    // remove embeddings from vector store
-    // remove chunks from registry table
-
-    console.log(`Remove note from index: ${notePath}`)
+    await this.store.deleteNote(notePath)
   }
 }

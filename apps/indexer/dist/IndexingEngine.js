@@ -7,9 +7,10 @@ const IndexQueue_1 = require("./IndexQueue");
  * Coordinates the incremental indexing pipeline.
  */
 class IndexingEngine {
-    constructor(vault, embedder) {
+    constructor(vault, embedder, store) {
         this.vault = vault;
         this.embedder = embedder;
+        this.store = store;
         this.chunker = new NoteChunker_1.NoteChunker();
         this.queue = new IndexQueue_1.IndexQueue();
     }
@@ -54,21 +55,19 @@ class IndexingEngine {
         const chunks = this.chunker.split(notePath, markdown);
         const chunkTexts = chunks.map((c) => c.text);
         const embeddings = await this.embedder.embed(chunkTexts);
-        return {
+        const result = {
             notePath,
             chunks,
             embeddings,
         };
+        await this.store.saveChunks(notePath, chunks, embeddings);
+        return result;
     }
     /**
      * Remove a note from the index.
-     * (Implementation placeholder for future index storage layer)
      */
     async removeNote(notePath) {
-        // Future implementation:
-        // remove embeddings from vector store
-        // remove chunks from registry table
-        console.log(`Remove note from index: ${notePath}`);
+        await this.store.deleteNote(notePath);
     }
 }
 exports.IndexingEngine = IndexingEngine;
