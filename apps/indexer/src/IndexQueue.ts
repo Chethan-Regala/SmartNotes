@@ -6,29 +6,26 @@ import { IndexJob } from "./types"
  */
 export class IndexQueue {
   private queue: IndexJob[] = []
-  private running = false
+  private processing: Promise<void> | null = null
 
   enqueue(job: IndexJob) {
     this.queue.push(job)
   }
 
-  async process(handler: (job: IndexJob) => Promise<void>) {
-    if (this.running) return
+  process(handler: (job: IndexJob) => Promise<void>): Promise<void> {
+    if (this.processing) return this.processing
 
-    this.running = true
+    this.processing = (async () => {
+      while (this.queue.length > 0) {
+        const job = this.queue.shift()
+        if (!job) continue
 
-    while (this.queue.length > 0) {
-      const job = this.queue.shift()
-
-      if (!job) continue
-
-      try {
         await handler(job)
-      } catch (err) {
-        console.error("Index job failed:", err)
       }
-    }
+    })().finally(() => {
+      this.processing = null
+    })
 
-    this.running = false
+    return this.processing
   }
 }

@@ -1,4 +1,4 @@
-import { NoteChunk } from "./types"
+import type { NoteChunk } from "./types"
 import crypto from "crypto"
 
 /**
@@ -15,7 +15,7 @@ export class NoteChunker {
     const chunks: NoteChunk[] = paragraphs.map((text, index) => {
       const id = crypto
         .createHash("sha1")
-        .update(notePath + index + text)
+        .update(`${notePath}\0${index}\0${text}`)
         .digest("hex")
 
       return {

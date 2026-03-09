@@ -6,7 +6,10 @@ import { NoteChunk } from "../types"
  */
 export interface IndexStore {
   /**
-   * Store indexed chunks and embeddings.
+   * Atomically replace all indexed chunks and embeddings for the given notePath.
+   *
+   * Implementations must remove any previously stored chunks that no longer
+   * exist after a note edit.
    */
   saveChunks(
     notePath: string,

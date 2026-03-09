@@ -30,7 +30,7 @@ export class IndexingEngine {
   /**
    * Schedule indexing for a note.
    */
-  scheduleUpdate(notePath: string) {
+  scheduleUpdate(notePath: string): Promise<void> {
     const job: IndexJob = {
       type: "update",
       notePath,
@@ -38,13 +38,13 @@ export class IndexingEngine {
 
     this.queue.enqueue(job)
 
-    this.queue.process(this.processJob.bind(this))
+    return this.queue.process(this.processJob.bind(this))
   }
 
   /**
    * Schedule deletion of a note from the index.
    */
-  scheduleDelete(notePath: string) {
+  scheduleDelete(notePath: string): Promise<void> {
     const job: IndexJob = {
       type: "delete",
       notePath,
@@ -52,7 +52,7 @@ export class IndexingEngine {
 
     this.queue.enqueue(job)
 
-    this.queue.process(this.processJob.bind(this))
+    return this.queue.process(this.processJob.bind(this))
   }
 
   /**
@@ -79,6 +79,12 @@ export class IndexingEngine {
     const chunkTexts = chunks.map((c) => c.text)
 
     const embeddings = await this.embedder.embed(chunkTexts)
+
+    if (embeddings.length !== chunks.length) {
+      throw new Error(
+        `Embedding adapter returned ${embeddings.length} embeddings for ${chunks.length} chunks`
+      )
+    }
 
     const result: IndexResult = {
       notePath,
