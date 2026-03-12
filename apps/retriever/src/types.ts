@@ -96,9 +96,9 @@ export interface RetrievalStore {
   /**
    * Loads precomputed embeddings for the specified chunk IDs.
    *
-   * The returned array preserves the same order as the input `chunkIds`.
-   * If an embedding is missing for a given ID, implementations should
-   * document their fallback behaviour (e.g., return a zero vector or omit it).
+   * Implementations must return embeddings in the same order as the input
+   * `chunkIds`, with exactly one embedding for each chunk ID.
+   * Embeddings must not be omitted.
    *
    * @param chunkIds - Array of chunk identifiers whose embeddings should be loaded.
    * @returns A promise resolving to a 2-D array where each inner array is a
@@ -141,21 +141,21 @@ export interface QueryEmbeddingProvider {
  *
  * The final score for a result is typically computed as:
  * ```
- * finalScore = (alpha * normalizedLexicalScore) + (beta * semanticScore)
+ * finalScore = (alpha * semanticScore) + (beta * normalizedLexicalScore)
  * ```
  * `alpha` and `beta` should sum to 1.0 for a straightforward weighted average,
  * but the engine may support other configurations depending on the use case.
  */
 export interface HybridScoreWeights {
   /**
-   * Weight applied to the normalised lexical (BM25) score.
-   * A higher value biases results towards keyword relevance.
+   * Weight applied to the semantic (cosine similarity) score.
+   * A higher value biases results towards conceptual/semantic relevance.
    */
   alpha: number;
 
   /**
-   * Weight applied to the semantic (cosine similarity) score.
-   * A higher value biases results towards conceptual/semantic relevance.
+   * Weight applied to the normalised lexical (BM25) score.
+   * A higher value biases results towards keyword relevance.
    */
   beta: number;
 }

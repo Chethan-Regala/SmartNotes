@@ -77,13 +77,20 @@ export class RetrievalEngine {
    * ```
    */
   async search(query: string, limit: number): Promise<SearchResult[]> {
+    if (!Number.isInteger(limit) || limit <= 0) {
+      throw new RangeError(
+        `RetrievalEngine.search: limit must be a positive integer (got ${limit}).`
+      );
+    }
+
     // ------------------------------------------------------------------
     // Step 1 — Lexical search
     // Retrieve the top `limit` candidate chunks using full-text search.
     // Short-circuit immediately when no lexical matches exist — there is
     // nothing to re-rank semantically.
     // ------------------------------------------------------------------
-    const candidates = await this.store.searchLexical(query, limit);
+    const candidatePoolSize = limit * 5;
+    const candidates = await this.store.searchLexical(query, candidatePoolSize);
 
     if (candidates.length === 0) {
       return [];

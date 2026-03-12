@@ -77,12 +77,18 @@ export function scoreHybridResults(
     );
   }
 
+  if (weights.alpha < 0 || weights.beta < 0) {
+    throw new RangeError(
+      `scoreHybridResults: weights.alpha and weights.beta must be non-negative ` +
+        `(got ${weights.alpha} and ${weights.beta}).`
+    );
+  }
+
   const weightSum = weights.alpha + weights.beta;
   if (Math.abs(weightSum - 1) > WEIGHT_SUM_TOLERANCE) {
-    console.warn(
+    throw new RangeError(
       `scoreHybridResults: weights.alpha (${weights.alpha}) + weights.beta (${weights.beta}) ` +
-        `= ${weightSum}, which is not equal to 1. ` +
-        `This may produce unexpected score ranges.`
+        `must sum to 1 (got ${weightSum}).`
     );
   }
 
@@ -90,12 +96,21 @@ export function scoreHybridResults(
   // Scoring
   // ------------------------------------------------------------------
 
+  const maxLexicalScore = candidates.reduce(
+    (maxScore: number, candidate: SearchCandidate): number =>
+      Math.max(maxScore, candidate.lexicalScore),
+    0
+  );
+
   const results: SearchResult[] = candidates.map(
     (candidate: SearchCandidate, i: number): SearchResult => {
       const semanticScore = semanticScores[i];
       const lexicalScore = candidate.lexicalScore;
+      const normalizedLexicalScore =
+        maxLexicalScore > 0 ? lexicalScore / maxLexicalScore : 0;
       const finalScore =
-        weights.alpha * semanticScore + weights.beta * lexicalScore;
+        weights.alpha * semanticScore +
+        weights.beta * normalizedLexicalScore;
 
       return {
         chunkId: candidate.chunkId,

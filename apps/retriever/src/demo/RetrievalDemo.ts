@@ -7,7 +7,8 @@
  * the full six-stage retrieval pipeline without requiring a real database or model.
  *
  * Run with:
- *   npx ts-node apps/retriever/src/demo/RetrievalDemo.ts
+ *   npm run build
+ *   node dist/demo/RetrievalDemo.js
  */
 
 import { RetrievalEngine } from "../RetrievalEngine";

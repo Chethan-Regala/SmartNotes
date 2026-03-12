@@ -17,7 +17,7 @@
 export { RetrievalEngine } from "./RetrievalEngine";
 
 /** Cosine similarity utility for semantic vector comparison. */
-export { cosineSimilarity, vectorMagnitude } from "./CosineSimilarity";
+export { cosineSimilarity } from "./CosineSimilarity";
 
 /** Hybrid scoring and ranking utility. */
 export { scoreHybridResults } from "./HybridScorer";
