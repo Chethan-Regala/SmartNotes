@@ -81,7 +81,11 @@ export async function writeFileAtomic(
     // Open read-only to obtain a descriptor for sync without risking truncation.
     fileHandle = await open(tempPath, "r");
     await fileHandle.sync();
-  } catch {
+  } catch (error: unknown) {
+    if (!isWindowsEperm(error)) {
+      throw error;
+    }
+
     // Some Windows environments reject fsync on newly written files with EPERM.
     // The atomic rename is still the required correctness boundary for desktop use.
   } finally {
@@ -89,4 +93,13 @@ export async function writeFileAtomic(
   }
 
   await rename(tempPath, filePath);
+}
+
+function isWindowsEperm(error: unknown): error is NodeJS.ErrnoException {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as NodeJS.ErrnoException).code === "EPERM"
+  );
 }

@@ -10,6 +10,7 @@
  * corruption on crash or power loss.
  */
 
+import { existsSync } from "fs";
 import fs from "fs/promises";
 import path from "path";
 
@@ -80,7 +81,15 @@ export class VaultManager implements VaultService {
    * @param options - Vault configuration. `options.rootPath` must be an
    *                  absolute path to an existing directory.
    */
-  constructor(private readonly options: VaultOptions) {}
+  constructor(private readonly options: VaultOptions) {
+    if (!path.isAbsolute(options.rootPath)) {
+      throw new Error("Vault rootPath must be absolute");
+    }
+
+    if (!existsSync(options.rootPath)) {
+      throw new Error("Vault root directory does not exist");
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Private helpers
@@ -96,9 +105,23 @@ export class VaultManager implements VaultService {
    * @returns The normalised absolute path guaranteed to be inside the vault.
    * @throws {Error} If the resolved path escapes the vault root.
    */
-  private resolveSafe(relativePath: string): string {
+  private async resolveSafe(relativePath: string): Promise<string> {
     const resolved = resolveVaultPath(this.options.rootPath, relativePath);
     validateVaultPath(this.options.rootPath, resolved);
+
+    try {
+      const [realRoot, realPath] = await Promise.all([
+        fs.realpath(this.options.rootPath),
+        fs.realpath(resolved),
+      ]);
+
+      validateVaultPath(realRoot, realPath);
+    } catch (error: unknown) {
+      if (!isNotFoundError(error)) {
+        throw error;
+      }
+    }
+
     return resolved;
   }
 
@@ -118,7 +141,16 @@ export class VaultManager implements VaultService {
    * @throws {Error} If the path escapes the vault or the write fails.
    */
   async createNote(notePath: string, content: string): Promise<void> {
-    const resolved = this.resolveSafe(notePath);
+    const resolved = await this.resolveSafe(notePath);
+
+    try {
+      await fs.stat(resolved);
+      throw new Error(`Note already exists: ${notePath}`);
+    } catch (error: unknown) {
+      if (!isNotFoundError(error)) {
+        throw error;
+      }
+    }
 
     // Ensure the parent directory exists before writing.
     await fs.mkdir(path.dirname(resolved), { recursive: true });
@@ -133,7 +165,7 @@ export class VaultManager implements VaultService {
    * @throws {Error} If the path escapes the vault or the file does not exist.
    */
   async readNote(notePath: string): Promise<string> {
-    const resolved = this.resolveSafe(notePath);
+    const resolved = await this.resolveSafe(notePath);
     return fs.readFile(resolved, "utf8");
   }
 
@@ -149,7 +181,17 @@ export class VaultManager implements VaultService {
    * @throws {Error} If the path escapes the vault or the write fails.
    */
   async updateNote(notePath: string, content: string): Promise<void> {
-    const resolved = this.resolveSafe(notePath);
+    const resolved = await this.resolveSafe(notePath);
+
+    try {
+      await fs.stat(resolved);
+    } catch (error: unknown) {
+      if (isNotFoundError(error)) {
+        throw new Error(`Cannot update non-existent note: ${notePath}`);
+      }
+
+      throw error;
+    }
 
     // Parent directory must already exist for an update, but we create it
     // defensively to keep the operation idempotent.
@@ -164,7 +206,7 @@ export class VaultManager implements VaultService {
    * @throws {Error} If the path escapes the vault or the file does not exist.
    */
   async deleteNote(notePath: string): Promise<void> {
-    const resolved = this.resolveSafe(notePath);
+    const resolved = await this.resolveSafe(notePath);
     await fs.unlink(resolved);
   }
 
@@ -181,8 +223,17 @@ export class VaultManager implements VaultService {
    *                 exist, or the rename operation fails.
    */
   async renameNote(oldPath: string, newPath: string): Promise<void> {
-    const resolvedOld = this.resolveSafe(oldPath);
-    const resolvedNew = this.resolveSafe(newPath);
+    const resolvedOld = await this.resolveSafe(oldPath);
+    const resolvedNew = await this.resolveSafe(newPath);
+
+    try {
+      await fs.stat(resolvedNew);
+      throw new Error(`Destination note already exists: ${newPath}`);
+    } catch (error: unknown) {
+      if (!isNotFoundError(error)) {
+        throw error;
+      }
+    }
 
     // Ensure the destination directory exists before the rename.
     await fs.mkdir(path.dirname(resolvedNew), { recursive: true });
@@ -243,7 +294,7 @@ export class VaultManager implements VaultService {
    *                 already exists at the target path.
    */
   async createFolder(folderPath: string): Promise<void> {
-    const resolved = this.resolveSafe(folderPath);
+    const resolved = await this.resolveSafe(folderPath);
     await fs.mkdir(resolved, { recursive: true });
   }
 
@@ -258,7 +309,16 @@ export class VaultManager implements VaultService {
    * @throws {Error} If the path escapes the vault or the directory does not exist.
    */
   async deleteFolder(folderPath: string): Promise<void> {
-    const resolved = this.resolveSafe(folderPath);
+    const resolved = await this.resolveSafe(folderPath);
     await fs.rm(resolved, { recursive: true });
   }
+}
+
+function isNotFoundError(error: unknown): error is NodeJS.ErrnoException {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as NodeJS.ErrnoException).code === "ENOENT"
+  );
 }
