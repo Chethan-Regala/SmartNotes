@@ -63,8 +63,10 @@ export class RetrievalEngine {
    * the cost of embedding generation or similarity computation.
    *
    * @param query - The user's natural-language search query.
-   * @param limit - Maximum number of results to return. Applied both to the
-   *                upstream lexical search and to the final ranked output.
+   * @param limit - Maximum number of results to return.
+   *                The retrieval engine requests an expanded candidate pool
+   *                from lexical search (currently `limit * 5`) before semantic
+   *                reranking. The final ranked output is trimmed to `limit`.
    * @returns A promise that resolves to an array of {@link SearchResult} objects
    *          sorted in descending order by `finalScore`, containing at most
    *          `limit` entries.

@@ -81,6 +81,13 @@ export function scoreHybridResults(
     );
   }
 
+  if (!Number.isFinite(weights.alpha) || !Number.isFinite(weights.beta)) {
+    throw new RangeError(
+      `scoreHybridResults: weights.alpha and weights.beta must be finite numbers ` +
+        `(got ${weights.alpha} and ${weights.beta}).`
+    );
+  }
+
   if (weights.alpha < 0 || weights.beta < 0) {
     throw new RangeError(
       `scoreHybridResults: weights.alpha and weights.beta must be non-negative ` +
