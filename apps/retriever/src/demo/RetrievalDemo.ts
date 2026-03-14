@@ -12,7 +12,7 @@
  */
 
 import { RetrievalEngine } from "../RetrievalEngine";
-import {
+import type {
   RetrievalStore,
   QueryEmbeddingProvider,
   HybridScoreWeights,
@@ -34,13 +34,12 @@ class MockStore implements RetrievalStore {
   /**
    * Simulates a full-text search by returning a fixed list of candidate chunks.
    *
-   * The `query` and `limit` parameters are accepted to satisfy the interface
-   * contract but are intentionally unused in this mock — all candidates are
-   * always returned.
+   * The `query` parameter is accepted to satisfy the interface contract.
+   * The mock still respects `limit` so its behaviour matches the real store.
    *
    * @param query - The user's search query (unused in mock).
-   * @param limit - Maximum results requested (unused in mock).
-   * @returns A promise resolving to three hard-coded {@link SearchCandidate} objects.
+   * @param limit - Maximum results requested.
+   * @returns A promise resolving to at most `limit` hard-coded {@link SearchCandidate} objects.
    */
   async searchLexical(
     query: string,
@@ -48,7 +47,7 @@ class MockStore implements RetrievalStore {
   ): Promise<SearchCandidate[]> {
     console.log(`  [MockStore] searchLexical("${query}", limit=${limit})`);
 
-    return [
+    const candidates: SearchCandidate[] = [
       {
         chunkId: "1",
         notePath: "note1.md",
@@ -68,6 +67,8 @@ class MockStore implements RetrievalStore {
         lexicalScore: 0.7,
       },
     ];
+
+    return candidates.slice(0, Math.max(0, limit));
   }
 
   /**
@@ -76,18 +77,27 @@ class MockStore implements RetrievalStore {
    * Vectors are intentionally simple 3-dimensional floats so the cosine
    * similarity calculations are easy to verify by hand during development.
    *
-   * @param chunkIds - Chunk identifiers whose embeddings should be loaded (unused in mock).
+   * @param chunkIds - Chunk identifiers whose embeddings should be loaded.
    * @returns A promise resolving to one fixed embedding vector per requested ID.
    */
   async loadEmbeddings(chunkIds: string[]): Promise<number[][]> {
     console.log(`  [MockStore] loadEmbeddings([${chunkIds.join(", ")}])`);
 
-    // One vector per candidate, in the same order as chunkIds.
-    return [
-      [0.1, 0.2, 0.3], // embedding for chunkId "1"
-      [0.2, 0.1, 0.4], // embedding for chunkId "2"
-      [0.5, 0.4, 0.1], // embedding for chunkId "3"
-    ];
+    const embeddingsById: Record<string, number[]> = {
+      "1": [0.1, 0.2, 0.3],
+      "2": [0.2, 0.1, 0.4],
+      "3": [0.5, 0.4, 0.1],
+    };
+
+    return chunkIds.map((chunkId: string): number[] => {
+      const embedding = embeddingsById[chunkId];
+
+      if (embedding === undefined) {
+        throw new Error(`Missing embedding for chunkId: ${chunkId}`);
+      }
+
+      return embedding;
+    });
   }
 }
 

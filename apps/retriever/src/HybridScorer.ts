@@ -7,7 +7,11 @@
  * a single blended ranking signal.
  */
 
-import { SearchCandidate, SearchResult, HybridScoreWeights } from "./types";
+import type {
+  SearchCandidate,
+  SearchResult,
+  HybridScoreWeights,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -96,18 +100,24 @@ export function scoreHybridResults(
   // Scoring
   // ------------------------------------------------------------------
 
+  const minLexicalScore = candidates.reduce(
+    (minScore: number, candidate: SearchCandidate): number =>
+      Math.min(minScore, candidate.lexicalScore),
+    Number.POSITIVE_INFINITY
+  );
   const maxLexicalScore = candidates.reduce(
     (maxScore: number, candidate: SearchCandidate): number =>
       Math.max(maxScore, candidate.lexicalScore),
-    0
+    Number.NEGATIVE_INFINITY
   );
+  const range = maxLexicalScore - minLexicalScore;
 
   const results: SearchResult[] = candidates.map(
     (candidate: SearchCandidate, i: number): SearchResult => {
       const semanticScore = semanticScores[i];
       const lexicalScore = candidate.lexicalScore;
       const normalizedLexicalScore =
-        maxLexicalScore > 0 ? lexicalScore / maxLexicalScore : 0;
+        range > 0 ? (lexicalScore - minLexicalScore) / range : 0;
       const finalScore =
         weights.alpha * semanticScore +
         weights.beta * normalizedLexicalScore;

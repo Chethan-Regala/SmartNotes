@@ -7,7 +7,7 @@
  * final ranked output. It is the single entry point consumers call at search time.
  */
 
-import {
+import type {
   RetrievalStore,
   QueryEmbeddingProvider,
   HybridScoreWeights,
@@ -118,7 +118,8 @@ export class RetrievalEngine {
     // Scores lie in [-1, 1]; typical text embeddings produce values in [0, 1].
     // ------------------------------------------------------------------
     const semanticScores = embeddings.map(
-      (embedding: number[]): number => cosineSimilarity(queryEmbedding, embedding)
+      (embedding: number[]): number =>
+        (cosineSimilarity(queryEmbedding, embedding) + 1) / 2
     );
 
     // ------------------------------------------------------------------

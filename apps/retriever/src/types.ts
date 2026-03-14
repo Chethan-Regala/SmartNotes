@@ -55,19 +55,25 @@ export interface SearchResult {
   /**
    * Relevance score from lexical search (e.g., BM25).
    * Preserved from the original `SearchCandidate` for transparency and debugging.
+   * When {@link scoreHybridResults} computes `finalScore`, this raw `lexicalScore`
+   * is first normalized before blending so lexical and semantic signals are on
+   * comparable scales.
    */
   lexicalScore: number;
 
   /**
-   * Cosine similarity score between the query embedding and the chunk embedding.
-   * Ranges from -1 (opposite) to 1 (identical); typically 0–1 for note content.
+   * Semantic score used by {@link scoreHybridResults}.
+   * Derived from cosine similarity and normalized from the native `[-1, 1]`
+   * range into `[0, 1]` before hybrid blending.
    */
   semanticScore: number;
 
   /**
    * Final blended score used to rank this result.
-   * Computed as a weighted combination of `lexicalScore` and `semanticScore`
-   * using the configured {@link HybridScoreWeights}.
+   * {@link scoreHybridResults} computes:
+   * `finalScore = alpha * semanticScore + beta * normalizedLexicalScore`
+   * where `semanticScore` is the normalized cosine similarity and
+   * `normalizedLexicalScore` is derived from `lexicalScore`.
    */
   finalScore: number;
 }
@@ -139,22 +145,24 @@ export interface QueryEmbeddingProvider {
 /**
  * Weights used to blend lexical and semantic scores in hybrid ranking.
  *
- * The final score for a result is typically computed as:
+ * {@link scoreHybridResults} computes the blended rank as:
  * ```
  * finalScore = (alpha * semanticScore) + (beta * normalizedLexicalScore)
  * ```
- * `alpha` and `beta` should sum to 1.0 for a straightforward weighted average,
- * but the engine may support other configurations depending on the use case.
+ * `alpha` controls the normalized semantic contribution and `beta` controls
+ * the normalized lexical contribution. For deterministic weighted blending,
+ * `alpha + beta` must sum to approximately `1`.
  */
 export interface HybridScoreWeights {
   /**
-   * Weight applied to the semantic (cosine similarity) score.
+   * Weight applied to the semantic score used by {@link scoreHybridResults}.
+   * This multiplies the normalized cosine similarity signal.
    * A higher value biases results towards conceptual/semantic relevance.
    */
   alpha: number;
 
   /**
-   * Weight applied to the normalised lexical (BM25) score.
+   * Weight applied to the normalized `lexicalScore` in {@link scoreHybridResults}.
    * A higher value biases results towards keyword relevance.
    */
   beta: number;

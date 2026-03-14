@@ -8,8 +8,8 @@
  *
  * @example
  * ```ts
- * import { RetrievalEngine, cosineSimilarity, scoreHybridResults } from "@smart-notes/retriever";
- * import type { SearchResult, HybridScoreWeights } from "@smart-notes/retriever";
+ * import { RetrievalEngine, cosineSimilarity, scoreHybridResults } from "retriever";
+ * import type { SearchResult, HybridScoreWeights } from "retriever";
  * ```
  */
 
