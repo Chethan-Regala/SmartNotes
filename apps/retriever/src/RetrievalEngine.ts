@@ -16,6 +16,26 @@ import type {
 import { cosineSimilarity } from "./CosineSimilarity";
 import { scoreHybridResults } from "./HybridScorer";
 
+function wrapOperationError(operation: string, details: string, error: unknown): Error {
+  const wrapped = new Error(
+    `RetrievalEngine.search: ${operation} failed (${details}): ${getErrorMessage(error)}`
+  );
+
+  if (error instanceof Error && error.stack) {
+    wrapped.stack = `${wrapped.name}: ${wrapped.message}\nCaused by: ${error.stack}`;
+  }
+
+  return wrapped;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
 /**
  * Orchestrates the full hybrid retrieval pipeline for Smart Notes.
  *
@@ -103,7 +123,12 @@ export class RetrievalEngine {
     // Encode the raw query string into a dense vector so it can be
     // compared against the stored chunk embeddings via cosine similarity.
     // ------------------------------------------------------------------
-    const queryEmbedding = await this.embedder.embedQuery(query);
+    let queryEmbedding: number[];
+    try {
+      queryEmbedding = await this.embedder.embedQuery(query);
+    } catch (error: unknown) {
+      throw wrapOperationError("embedQuery", `query="${query}"`, error);
+    }
 
     // ------------------------------------------------------------------
     // Step 3 — Chunk embeddings
@@ -111,7 +136,16 @@ export class RetrievalEngine {
     // call to minimise round-trip overhead against the storage layer.
     // ------------------------------------------------------------------
     const chunkIds = candidates.map((c) => c.chunkId);
-    const embeddings = await this.store.loadEmbeddings(chunkIds);
+    let embeddings: number[][];
+    try {
+      embeddings = await this.store.loadEmbeddings(chunkIds);
+    } catch (error: unknown) {
+      throw wrapOperationError(
+        "loadEmbeddings",
+        `chunkCount=${chunkIds.length}, chunkIds=[${chunkIds.join(", ")}]`,
+        error
+      );
+    }
 
     // ------------------------------------------------------------------
     // Step 4 — Cosine similarity
